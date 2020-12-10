@@ -7,7 +7,7 @@ class Link(models.Model):
     time = models.DateTimeField(null=True)
     status = models.IntegerField(null=True)
     description = models.CharField(max_length=30, null=True)
-    timeout = models.TimeField(null=True)
+    timeout = models.FloatField(null=True)
 
     class Meta:
         verbose_name = 'URL-Адрес'

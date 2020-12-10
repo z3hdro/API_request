@@ -2,6 +2,7 @@ from api.celery import app
 from single.models import Link
 from openpyxl import load_workbook
 from datetime import datetime
+from time import time
 import requests
 
 RESPONSE_TIMEOUT = 5
@@ -30,6 +31,7 @@ def imports():
 def check_link(url):
     link = Link.objects.get(link=url)
     start_time = datetime.now()
+    current = time()
     try:
         response = requests.get('https://' + url, timeout=RESPONSE_TIMEOUT)
     except requests.exceptions.RequestException:
@@ -37,7 +39,7 @@ def check_link(url):
         link.description = 'Runtime error'
     else:
         link.status = response.status_code
-        link.timeout = str(datetime.now() - start_time)
+        link.timeout = time() - current
         link.time = str(start_time)
         link.description = 'Success'
     finally:
