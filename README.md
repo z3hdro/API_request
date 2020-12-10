@@ -16,6 +16,15 @@
 
 3. Переходим в корень проекта (cd api) и устанавливаем все зависимости из requirements.txt:
 ### `pip install -r requirements.txt`
+  !!!Для Ubuntu/Linux возможно возникновение ошибки, решение: 
+  в файле requirements.txt
+```python
+psycopg2==2.8.6
+#заменить вручную на 
+psycopg2-binary==2.8.6
+```
+  После сохранения изменений снова вызвать:
+  ### `pip install -r requirements.txt`
    
 4. Далее, необходимо запустить docker и запустить контейнеры postgresql и redis:
 ## Redis
@@ -67,4 +76,4 @@ CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://localhost:{pref
   
   5. localhost:8000/admin - панель для админов. Необходимо создать superuser или использовать уже готового superuser-а:
   В терминале
-    ### `python manage.py createsuperuser`
+   ### `python manage.py createsuperuser`
