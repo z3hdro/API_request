@@ -1,18 +1,21 @@
 from api.celery import app
 from single.models import Link
 from openpyxl import load_workbook
+from datetime import datetime
+import requests
 
-@app.task()
+RESPONSE_TIMEOUT = 5
+
+
+@app.task
 def imports():
     try:
         wb = load_workbook('./data.xlsx')
         ws = wb['Data']
     except FileNotFoundError:
         return 'File does not exist'
-        # return JsonResponse({'Error': 'File does not exist'}, status=400)
     except KeyError:
         return 'Sheet with name Data was not found!'
-        # return JsonResponse({'Error': 'Sheet with name Data was not found!'}, status=400)
     else:
         for cell in ws['A']:
             try:
@@ -20,5 +23,23 @@ def imports():
             except Link.DoesNotExist:
                 new_link = Link(link=cell.value)
                 new_link.save()
-        # return JsonResponse({'Succecss': 'imported!'})
         return 'links were imported successfully!'
+
+
+@app.task
+def check_link(url):
+    link = Link.objects.get(link=url)
+    start_time = datetime.now()
+    try:
+        response = requests.get('https://' + url, timeout=RESPONSE_TIMEOUT)
+    except requests.exceptions.RequestException:
+        link.status = -1
+        link.description = 'Runtime error'
+    else:
+        link.status = response.status_code
+        link.timeout = str(datetime.now() - start_time)
+        link.time = str(start_time)
+        link.description = 'Success'
+    finally:
+        link.save()
+        return 'Done'

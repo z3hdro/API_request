@@ -1,29 +1,18 @@
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from single.tasks import imports
-# from single.models import Link
-# from openpyxl import load_workbook
+from single.tasks import imports, check_link
+from celery.result import AsyncResult
+from single.models import Link
+from datetime import datetime, timedelta, timezone
+
+CHECK_TIMEOUT = 30
 
 # Create your views here.
 @api_view(['GET'])
 def importing(request):
     task = imports.delay()
     return JsonResponse({'task': f'the id of task is {task.id}'})
-    # try:
-    #     wb = load_workbook('./data.xlsx')
-    #     ws = wb['Data']
-    # except FileNotFoundError:
-    #     return JsonResponse({'Error': 'File does not exist'}, status=400)
-    # except KeyError:
-    #     return JsonResponse({'Error': 'Sheet with name Data was not found!'}, status=400)
-    # else:
-    #     for cell in ws['A']:
-    #         try:
-    #             link = Link.objects.get(link=cell.value)
-    #         except Link.DoesNotExist:
-    #             new_link = Link(link=cell.value)
-    #             new_link.save()
-        # return JsonResponse({'Succecss': 'imported!'})
+
 
 @api_view(['GET'])
 def get_status(request, task_id):
@@ -35,6 +24,7 @@ def get_status(request, task_id):
     }
     return JsonResponse(result, status=200)
 
+
 @api_view(['GET'])
 def check_single(request):
     if 'url' in request.GET:
@@ -45,9 +35,21 @@ def check_single(request):
             return JsonResponse({'Error': 'the results for this URL do not exist'}, status=400)
         else:
             return JsonResponse({'result': {
-                'url':result.link,
-                'status':result.status
+                'url': result.link,
+                'status': result.status
             }})
     else:
         return JsonResponse({'Error': 'URL parameter is not found!'}, status=400)
-    return JsonResponse({'result':'success!'})
+    return JsonResponse({'result': 'success!'})
+
+
+@api_view(['GET'])
+def check_url(request):
+    links = Link.objects.all()
+    link_counter = 0
+    for link in links:
+        time = link.time
+        if time is None or datetime.now(timezone.utc) - time > timedelta(seconds=CHECK_TIMEOUT):
+            check_link.delay(url=link.link)
+            link_counter += 1
+    return JsonResponse({'result': f'Links to check: {link_counter}'})
